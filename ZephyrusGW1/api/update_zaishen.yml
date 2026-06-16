@@ -1,0 +1,47 @@
+name: Update Zaishen Quests
+
+on:
+  schedule:
+    - cron: "0 7 * * *"   # Every day at 07:00 UTC
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Fetch latest Zaishen data
+        run: |
+          curl -s https://wiki.guildwars.com/wiki/Zaishen_quests > page.html
+
+          # Bounty
+          grep -A1 "Zaishen Bounty" page.html | tail -n1 | sed 's/<[^>]*>//g' > bounty.txt
+
+          # Mission
+          grep -A1 "Zaishen Mission" page.html | tail -n1 | sed 's/<[^>]*>//g' > mission.txt
+
+          # Combat
+          grep -A1 "Zaishen Combat" page.html | tail -n1 | sed 's/<[^>]*>//g' > combat.txt
+
+          # Vanquish
+          grep -A1 "Zaishen Vanquish" page.html | tail -n1 | sed 's/<[^>]*>//g' > vanquish.txt
+
+      - name: Build JSON
+        run: |
+          echo "{" > zaishen.json
+          echo "  \"bounty\": \"$(cat bounty.txt)\"," >> zaishen.json
+          echo "  \"mission\": \"$(cat mission.txt)\"," >> zaishen.json
+          echo "  \"combat\": \"$(cat combat.txt)\"," >> zaishen.json
+          echo "  \"vanquish\": \"$(cat vanquish.txt)\"" >> zaishen.json
+          echo "}" >> zaishen.json
+
+      - name: Commit changes
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "actions@github.com"
+          git add zaishen.json
+          git commit -m "Auto-update Zaishen quests" || echo "No changes"
+          git push
